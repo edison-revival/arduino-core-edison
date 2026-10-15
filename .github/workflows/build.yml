@@ -1,0 +1,75 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ZIG_VERSION: 0.17.0
+  ZIG_SHA256: 1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
+  ARDUINO_CLI_VERSION: 1.5.1
+  ARDUINO_CLI_SHA256: 28a8e119c498a25607821c36cb2dc49e8463941b261a0d99091baa7bc692dd2b
+
+jobs:
+  sketches:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: core
+
+      - name: Cache downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: downloads
+          key: downloads-zig-${{ env.ZIG_VERSION }}-cli-${{ env.ARDUINO_CLI_VERSION }}
+
+      - name: Fetch Zig and arduino-cli
+        run: |
+          mkdir -p downloads tools
+          zig=zig-x86_64-linux-$ZIG_VERSION.tar.xz
+          cli=arduino-cli_${ARDUINO_CLI_VERSION}_Linux_64bit.tar.gz
+          [ -f "downloads/$zig" ] ||
+            curl -fsSL -o "downloads/$zig" "https://ziglang.org/download/$ZIG_VERSION/$zig"
+          [ -f "downloads/$cli" ] ||
+            curl -fsSL -o "downloads/$cli" \
+              "https://github.com/arduino/arduino-cli/releases/download/v$ARDUINO_CLI_VERSION/$cli"
+          printf '%s  %s\n' "$ZIG_SHA256" "downloads/$zig" "$ARDUINO_CLI_SHA256" "downloads/$cli" |
+            sha256sum -c -
+          tar -C tools -xJf "downloads/$zig"
+          tar -C tools -xzf "downloads/$cli" arduino-cli
+
+      - name: Build the sysroot
+        run: core/tools/make-sysroot.sh
+
+      - name: Install the core
+        run: |
+          echo "ARDUINO_DIRECTORIES_USER=$PWD/sketchbook" >> "$GITHUB_ENV"
+          echo "ARDUINO_DIRECTORIES_DATA=$PWD/arduino-data" >> "$GITHUB_ENV"
+          mkdir -p sketchbook/hardware/edison-revival
+          ln -s "$PWD/core" sketchbook/hardware/edison-revival/edison
+          printf 'compiler.path=%s/\ncompiler.sysroot=%s\n' \
+            "$PWD/tools/zig-x86_64-linux-$ZIG_VERSION" "$PWD/core/dist/edison-sysroot" \
+            > core/platform.local.txt
+
+      - name: Compile sketches
+        run: |
+          cli=tools/arduino-cli
+          $cli core update-index
+          $cli lib install elapsedMillis
+          for sketch in core/tests/sketches/* sketchbook/libraries/elapsedMillis/examples/*; do
+            echo "::group::$sketch"
+            $cli compile -b edison-revival:edison:edison --warnings all \
+              --output-dir "out/$(basename "$sketch")" "$sketch"
+            echo "::endgroup::"
+          done
+          file out/*/*.elf
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sketches
+          path: out/*/*.elf
