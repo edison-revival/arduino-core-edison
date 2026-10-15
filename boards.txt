@@ -6,6 +6,12 @@ edison.build.board=EDISON
 
 # Found on the network by mDNS (edison-image advertises _arduino._tcp with board=edison),
 # or by its USB serial port.
+# arduino-cli asks for a programmer when a board has no upload.protocol.
+edison.upload.protocol=ssh
+edison.upload.tool.default=edison-upload
+edison.upload.tool.serial=edison-upload
+edison.upload.tool.network=edison-upload
+
 edison.upload_port.0.board=edison
 edison.upload_port.1.vid=0x1d6b
 edison.upload_port.1.pid=0x0104

@@ -9,6 +9,10 @@ version=0.1.0
 # Tools. To build against local copies, set these in platform.local.txt (see README).
 compiler.path={runtime.tools.edison-zig.path}/
 compiler.sysroot={runtime.tools.edison-sysroot.path}
+# edison-upload and edison-cc (tools/build-tools.sh).
+edison.tools.path={runtime.tools.edison-tools.path}
+edison.tools.ext=
+edison.tools.ext.windows=.exe
 compiler.cmd=zig
 compiler.target=x86_64-linux-gnu.2.41
 
@@ -43,6 +47,20 @@ recipe.ar.pattern="{compiler.path}{compiler.cmd}" ar rcs "{archive_file_path}" "
 recipe.c.combine.pattern="{compiler.path}{compiler.cmd}" c++ {compiler.ldflags} {compiler.c.elf.extra_flags} -o "{build.path}/{build.project_name}.elf" {object_files} "{archive_file_path}" {compiler.libs}
 
 # Used to find which libraries a sketch includes, and to generate function prototypes.
-recipe.preproc.macros="{compiler.path}{compiler.cmd}" c++ {compiler.cpp.flags} -w {compiler.defines} {build.extra_flags} {compiler.cpp.extra_flags} {includes} {compiler.includes} -x c++ -E -CC "{source_file}" -o "{preprocessed_file_path}"
+# edison-cc stands in for the null device as the output, which zig can't write to on
+# Windows (tools/edison-cc).
+recipe.preproc.macros="{edison.tools.path}/edison-cc{edison.tools.ext}" "{compiler.path}{compiler.cmd}" c++ {compiler.cpp.flags} -w {compiler.defines} {build.extra_flags} {compiler.cpp.extra_flags} {includes} {compiler.includes} -x c++ -E -CC "{source_file}" -o "{preprocessed_file_path}"
 
-# Upload (over SSH, by edison-upload) is added with the uploader.
+# Upload over SSH, by edison-upload (tools/edison-upload). With the board's USB serial port
+# picked, it uploads over the USB network link on the same cable; with a network port (from
+# mDNS), to that address. The password is only used for the first upload, to install this
+# computer's key.
+tools.edison-upload.path={edison.tools.path}
+tools.edison-upload.cmd=edison-upload
+tools.edison-upload.cmd.windows=edison-upload.exe
+tools.edison-upload.upload.params.verbose=-v
+tools.edison-upload.upload.params.quiet=
+tools.edison-upload.upload.field.password=Board password (first upload only)
+tools.edison-upload.upload.field.password.secret=true
+# -flag=value, as one argument each: an empty value (no password) mustn't drop out.
+tools.edison-upload.upload.pattern="{path}/{cmd}" {upload.verbose} "-port={upload.port.address}" "-protocol={upload.port.protocol}" "-password={upload.field.password}" "{build.path}/{build.project_name}.elf"

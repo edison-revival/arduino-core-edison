@@ -15,7 +15,21 @@ env:
   ARDUINO_CLI_SHA256: 28a8e119c498a25607821c36cb2dc49e8463941b261a0d99091baa7bc692dd2b
 
 jobs:
+  tools:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Test and build edison-upload and edison-cc
+        run: tools/build-tools.sh
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: edison-tools
+          path: dist/edison-tools
+
   sketches:
+    needs: tools
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,15 +60,21 @@ jobs:
       - name: Build the sysroot
         run: core/tools/make-sysroot.sh
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: edison-tools
+          path: edison-tools
+
       - name: Install the core
         run: |
+          chmod +x edison-tools/*/*  # artifacts don't keep file modes
           echo "ARDUINO_DIRECTORIES_USER=$PWD/sketchbook" >> "$GITHUB_ENV"
           echo "ARDUINO_DIRECTORIES_DATA=$PWD/arduino-data" >> "$GITHUB_ENV"
           mkdir -p sketchbook/hardware/edison-revival
           ln -s "$PWD/core" sketchbook/hardware/edison-revival/edison
-          printf 'compiler.path=%s/\ncompiler.sysroot=%s\n' \
+          printf 'compiler.path=%s/\ncompiler.sysroot=%s\nedison.tools.path=%s\n' \
             "$PWD/tools/zig-x86_64-linux-$ZIG_VERSION" "$PWD/core/dist/edison-sysroot" \
-            > core/platform.local.txt
+            "$PWD/edison-tools/linux-amd64" > core/platform.local.txt
 
       - name: Compile sketches
         run: |
