@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include <map>
+#include <mutex>
 #include <utility>
 #include <vector>
 
@@ -170,10 +171,7 @@ bool configure(pin_size_t pin, PinMode mode) {
     return true;
 }
 
-}  // namespace
-
-void pinMode(pin_size_t pin, PinMode mode) {
-    if (pin >= NUM_DIGITAL_PINS) return;
+void set_mode(pin_size_t pin, PinMode mode) {
     if (configure(pin, mode)) {
         state[pin] = mode == OUTPUT ? State::Output : State::Input;
     } else {
@@ -181,8 +179,21 @@ void pinMode(pin_size_t pin, PinMode mode) {
     }
 }
 
+// Held by every pin function, and taken for good by edison_gpio_release_all() when the
+// sketch is stopped (from another thread), so the two never touch the lines at once.
+std::mutex gpio_lock;
+
+}  // namespace
+
+void pinMode(pin_size_t pin, PinMode mode) {
+    if (pin >= NUM_DIGITAL_PINS) return;
+    std::lock_guard<std::mutex> lock(gpio_lock);
+    set_mode(pin, mode);
+}
+
 void digitalWrite(pin_size_t pin, PinStatus value) {
     if (pin >= NUM_DIGITAL_PINS) return;
+    std::lock_guard<std::mutex> lock(gpio_lock);
     if (state[pin] == State::Input) {
         // As on AVR: writing to an input switches its pull-up on or off.
         set_pull(edison_pins[pin], value == HIGH ? INPUT_PULLUP : INPUT);
@@ -199,8 +210,9 @@ void digitalWrite(pin_size_t pin, PinStatus value) {
 
 PinStatus digitalRead(pin_size_t pin) {
     if (pin >= NUM_DIGITAL_PINS) return LOW;
+    std::lock_guard<std::mutex> lock(gpio_lock);
     // Pins start as inputs on other boards; do the same for a pin read before pinMode().
-    if (state[pin] == State::Unset) pinMode(pin, INPUT);
+    if (state[pin] == State::Unset) set_mode(pin, INPUT);
     if (state[pin] == State::Failed) return LOW;
     gpiod_line_request *r = request_of(soc_line(edison_pins[pin].soc));
     if (!r) return LOW;
@@ -210,6 +222,9 @@ PinStatus digitalRead(pin_size_t pin) {
 }
 
 void edison_gpio_release_all() {
+    // Never unlocked: the process exits next, and any pin call the sketch makes meanwhile
+    // waits rather than undoing this.
+    gpio_lock.lock();
     // Leave the pins as inputs, as a reset does on other boards: the lines keep their last
     // levels once released, so an output would otherwise go on driving.
     for (pin_size_t pin = 0; pin < NUM_DIGITAL_PINS; pin++) {

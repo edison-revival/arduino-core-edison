@@ -8,5 +8,7 @@
 */
 #pragma once
 
-// Release every GPIO line the sketch holds (on exit, so the next sketch can take them).
+// Return the sketch's pins to inputs and release every line it holds, so the next sketch
+// can take them. Called once, when the sketch is stopped; the process must exit after it,
+// as pin functions called from then on block.
 void edison_gpio_release_all();
