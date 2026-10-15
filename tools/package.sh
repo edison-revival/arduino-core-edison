@@ -137,7 +137,7 @@ done
 
 platform=$(echo "$core" | jq --arg version "$version" --arg zig "$ZIG_VERSION" \
     --arg packager "$PACKAGER" --arg help "$REPO_URL" '
-    {name: "Intel Edison (edison-revival)", architecture: "edison", version: $version,
+    {name: "Intel Edison", architecture: "edison", version: $version,
      category: "Contributed", help: {online: $help}} + . + {
      boards: [{name: "Intel Edison (Kit for Arduino)"}],
      toolsDependencies: [

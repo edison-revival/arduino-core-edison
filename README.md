@@ -11,7 +11,7 @@ network. Not yet: `analogRead`, `analogWrite` (PWM), `Wire`, `SPI`, interrupts.
 ## Installing
 
 **Arduino IDE 2.x:** add this URL under File → Preferences → Additional boards manager URLs,
-then install "Intel Edison (edison-revival)" in the Boards Manager:
+then install "Intel Edison" by edison-revival in the Boards Manager:
 
 ```
 https://github.com/edison-revival/arduino-core-edison/releases/latest/download/package_edison-revival_index.json

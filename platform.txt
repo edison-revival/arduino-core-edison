@@ -3,7 +3,7 @@
 # Linux process on the board. Specification:
 # https://arduino.github.io/arduino-cli/latest/platform-specification/
 
-name=Intel Edison (edison-revival)
+name=Intel Edison
 version=0.1.0
 
 # Tools. To build against local copies, set these in platform.local.txt (see README).
