@@ -2,17 +2,16 @@ name: build
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call: # release.yml builds tags through this workflow
 
 permissions:
   contents: read
 
 env:
-  ZIG_VERSION: 0.17.0
-  ZIG_SHA256: 1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
   ARDUINO_CLI_VERSION: 1.5.1
-  ARDUINO_CLI_SHA256: 28a8e119c498a25607821c36cb2dc49e8463941b261a0d99091baa7bc692dd2b
 
 jobs:
   tools:
@@ -28,58 +27,114 @@ jobs:
           name: edison-tools
           path: dist/edison-tools
 
-  sketches:
+  package:
     needs: tools
     runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Cache the Zig downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: downloads
+          key: downloads-${{ hashFiles('tools/package.sh') }}
+          restore-keys: downloads-
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: edison-tools
+          path: dist/edison-tools
+
+      - name: Build the sysroot
+        run: tools/make-sysroot.sh
+
+      - name: Get the last release's Boards Manager index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --pattern package_edison-revival_index.json --dir previous ||
+            echo "No earlier release; starting a new index."
+
+      - name: Package
+        run: |
+          version=$(sed -n 's/^version=//p' platform.txt)
+          prev=previous/package_edison-revival_index.json
+          [ -f "$prev" ] || prev=
+          tools/package.sh "$version" $prev
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: dist/release
+          compression-level: 0 # already xz
+
+  # Install the core the way the Boards Manager does (from the index, served locally) and
+  # compile with it on each kind of computer.
+  sketches:
+    needs: package
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            cli: Linux_64bit.tar.gz
+            sha256: 28a8e119c498a25607821c36cb2dc49e8463941b261a0d99091baa7bc692dd2b
+          - os: windows-2025
+            cli: Windows_64bit.zip
+            sha256: fabe42e0eb04d00e776a66178299ff95a46c623dbc260f997e58fd514853dd40
+          - os: macos-15
+            cli: macOS_ARM64.tar.gz
+            sha256: cb952e8c1621c95ef5f1d17831c945e3d0ec5973f89c557a7ec8feb9c4f7d4c9
+          - os: macos-15-intel
+            cli: macOS_64bit.tar.gz
+            sha256: c982e940027996bea9901050e95fae99c59c1dcfee54beedecaf28141e7bf2e7
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: core
 
-      - name: Cache downloads
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: downloads
-          key: downloads-zig-${{ env.ZIG_VERSION }}-cli-${{ env.ARDUINO_CLI_VERSION }}
-
-      - name: Fetch Zig and arduino-cli
-        run: |
-          mkdir -p downloads tools
-          zig=zig-x86_64-linux-$ZIG_VERSION.tar.xz
-          cli=arduino-cli_${ARDUINO_CLI_VERSION}_Linux_64bit.tar.gz
-          [ -f "downloads/$zig" ] ||
-            curl -fsSL -o "downloads/$zig" "https://ziglang.org/download/$ZIG_VERSION/$zig"
-          [ -f "downloads/$cli" ] ||
-            curl -fsSL -o "downloads/$cli" \
-              "https://github.com/arduino/arduino-cli/releases/download/v$ARDUINO_CLI_VERSION/$cli"
-          printf '%s  %s\n' "$ZIG_SHA256" "downloads/$zig" "$ARDUINO_CLI_SHA256" "downloads/$cli" |
-            sha256sum -c -
-          tar -C tools -xJf "downloads/$zig"
-          tar -C tools -xzf "downloads/$cli" arduino-cli
-
-      - name: Build the sysroot
-        run: core/tools/make-sysroot.sh
-
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: edison-tools
-          path: edison-tools
+          name: release
+          path: release
 
-      - name: Install the core
+      - name: Fetch arduino-cli
         run: |
-          chmod +x edison-tools/*/*  # artifacts don't keep file modes
-          echo "ARDUINO_DIRECTORIES_USER=$PWD/sketchbook" >> "$GITHUB_ENV"
-          echo "ARDUINO_DIRECTORIES_DATA=$PWD/arduino-data" >> "$GITHUB_ENV"
-          mkdir -p sketchbook/hardware/edison-revival
-          ln -s "$PWD/core" sketchbook/hardware/edison-revival/edison
-          printf 'compiler.path=%s/\ncompiler.sysroot=%s\nedison.tools.path=%s\n' \
-            "$PWD/tools/zig-x86_64-linux-$ZIG_VERSION" "$PWD/core/dist/edison-sysroot" \
-            "$PWD/edison-tools/linux-amd64" > core/platform.local.txt
+          file=arduino-cli_${ARDUINO_CLI_VERSION}_${{ matrix.cli }}
+          curl -fsSL -o "$file" \
+            "https://github.com/arduino/arduino-cli/releases/download/v$ARDUINO_CLI_VERSION/$file"
+          echo "${{ matrix.sha256 }}  $file" | shasum -a 256 -c -
+          mkdir cli
+          case $file in
+            *.zip) unzip -q "$file" -d cli ;;
+            *) tar -C cli -xzf "$file" ;;
+          esac
+
+      - name: Install the core from the index
+        run: |
+          # The index points at the release; serve this build's archives instead.
+          sed "s|https://github.com/edison-revival/arduino-core-edison/releases/download/v[^/]*|http://127.0.0.1:8765|" \
+            release/package_edison-revival_index.json > release/package_local_index.json
+          py=$(command -v python || command -v python3)
+          "$py" -m http.server 8765 --bind 127.0.0.1 --directory release >/dev/null 2>&1 &
+          sleep 2
+          {
+            echo "ARDUINO_DIRECTORIES_DATA=$PWD/arduino-data"
+            echo "ARDUINO_DIRECTORIES_USER=$PWD/sketchbook"
+            echo "ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS=http://127.0.0.1:8765/package_local_index.json"
+          } >> "$GITHUB_ENV"
+          export ARDUINO_DIRECTORIES_DATA=$PWD/arduino-data ARDUINO_DIRECTORIES_USER=$PWD/sketchbook \
+            ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS=http://127.0.0.1:8765/package_local_index.json
+          cli/arduino-cli core update-index
+          cli/arduino-cli core install edison-revival:edison
 
       - name: Compile sketches
         run: |
-          cli=tools/arduino-cli
-          $cli core update-index
+          cli=cli/arduino-cli
           $cli lib install elapsedMillis
           for sketch in core/tests/sketches/* sketchbook/libraries/elapsedMillis/examples/*; do
             echo "::group::$sketch"
@@ -87,9 +142,10 @@ jobs:
               --output-dir "out/$(basename "$sketch")" "$sketch"
             echo "::endgroup::"
           done
-          file out/*/*.elf
+          ls -l out/*/*.elf
 
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - if: runner.os == 'Linux'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sketches
           path: out/*/*.elf

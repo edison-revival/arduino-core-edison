@@ -1,0 +1,59 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # create the release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: dist
+
+      - name: Write release notes
+        run: |
+          [ -f "dist/edison-core-${GITHUB_REF_NAME#v}.tar.xz" ] ||
+            { echo "platform.txt's version doesn't match the tag $GITHUB_REF_NAME" >&2; exit 1; }
+          cat > notes.md <<EOF
+          Arduino core for the Intel Edison (Kit for Arduino) running
+          [edison-image](https://github.com/edison-revival/edison-image).
+
+          **Arduino IDE:** add this URL under File → Preferences → Additional boards manager
+          URLs, then install "Intel Edison (edison-revival)" in the Boards Manager:
+
+          \`\`\`
+          https://github.com/edison-revival/arduino-core-edison/releases/latest/download/package_edison-revival_index.json
+          \`\`\`
+
+          **PlatformIO:** use [platform-edison](https://github.com/edison-revival/platform-edison),
+          which installs these same archives.
+
+          \`SHA256SUMS\` lists the archives' checksums.
+          EOF
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag \
+            --title "arduino-core-edison $GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --generate-notes \
+            $prerelease

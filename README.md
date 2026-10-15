@@ -6,8 +6,22 @@ An Arduino core for the Intel Edison on the Arduino expansion board, for boards 
 
 **Status: early.** Works: `pinMode`/`digitalWrite`/`digitalRead` on the header pins,
 `Serial` (USB) and `Serial1` (IO0/IO1), `millis`/`micros`/delays, upload over USB or the
-network. Not yet: `analogRead`, `analogWrite` (PWM), `Wire`, `SPI`, interrupts, the Boards
-Manager package.
+network. Not yet: `analogRead`, `analogWrite` (PWM), `Wire`, `SPI`, interrupts.
+
+## Installing
+
+**Arduino IDE 2.x:** add this URL under File → Preferences → Additional boards manager URLs,
+then install "Intel Edison (edison-revival)" in the Boards Manager:
+
+```
+https://github.com/edison-revival/arduino-core-edison/releases/latest/download/package_edison-revival_index.json
+```
+
+**PlatformIO:** use [platform-edison](https://github.com/edison-revival/platform-edison),
+which installs the same release archives.
+
+The board needs [edison-image](https://github.com/edison-revival/edison-image) v0.2.0 or
+later (it runs the sketch).
 
 ## How it works
 
@@ -62,6 +76,12 @@ the uploader).
 
 4. `arduino-cli compile -b edison-revival:edison:edison tests/sketches/Blink`, then
    `arduino-cli upload -b edison-revival:edison:edison -p PORT tests/sketches/Blink`.
+
+**Release archives:** after step 1, `tools/package.sh VERSION [PREVIOUS_INDEX]` writes the
+Boards Manager and PlatformIO archives and the index to `dist/release/`, as CI does
+(`.github/workflows/build.yml`). It downloads Zig from ziglang.org and checks its
+checksums; put the archives in `downloads/` to build without that site. Pushing a `v*` tag
+whose version matches `platform.txt` publishes a release (`release.yml`).
 
 ## License
 
