@@ -1,0 +1,11 @@
+edison.name=Intel Edison (Kit for Arduino)
+
+edison.build.core=edison
+edison.build.variant=edison
+edison.build.board=EDISON
+
+# Found on the network by mDNS (edison-image advertises _arduino._tcp with board=edison),
+# or by its USB serial port.
+edison.upload_port.0.board=edison
+edison.upload_port.1.vid=0x1d6b
+edison.upload_port.1.pid=0x0104

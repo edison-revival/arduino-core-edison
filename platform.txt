@@ -1,0 +1,48 @@
+# Intel Edison (Kit for Arduino) core, edison-revival.
+# Sketches are built with Zig's clang for x86_64 Linux (glibc 2.41, Debian 13) and run as a
+# Linux process on the board. Specification:
+# https://arduino.github.io/arduino-cli/latest/platform-specification/
+
+name=Intel Edison (edison-revival)
+version=0.1.0
+
+# Tools. To build against local copies, set these in platform.local.txt (see README).
+compiler.path={runtime.tools.edison-zig.path}/
+compiler.sysroot={runtime.tools.edison-sysroot.path}
+compiler.cmd=zig
+compiler.target=x86_64-linux-gnu.2.41
+
+compiler.warning_flags=-w
+compiler.warning_flags.none=-w
+compiler.warning_flags.default=
+compiler.warning_flags.more=-Wall
+compiler.warning_flags.all=-Wall -Wextra
+
+compiler.optimization_flags=-Os
+compiler.common_flags=-target {compiler.target} {compiler.optimization_flags} -ffunction-sections -fdata-sections -MMD
+compiler.defines=-DHOST -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_{build.arch}
+compiler.includes="-I{build.core.path}/api/deprecated" "-I{build.core.path}/api/deprecated-avr-comp" "-isystem{compiler.sysroot}/include"
+
+compiler.c.flags=-c {compiler.common_flags} -std=gnu11
+compiler.cpp.flags=-c {compiler.common_flags} -std=gnu++17 -Wno-main
+compiler.S.flags=-c {compiler.common_flags} -x assembler-with-cpp
+compiler.ldflags=-target {compiler.target} -Wl,--gc-sections -s
+compiler.libs="{compiler.sysroot}/lib/libgpiod.so.3" -lpthread
+
+# Overridable from boards.txt or the command line (--build-property).
+compiler.c.extra_flags=
+compiler.cpp.extra_flags=
+compiler.S.extra_flags=
+compiler.c.elf.extra_flags=
+build.extra_flags=
+
+recipe.c.o.pattern="{compiler.path}{compiler.cmd}" cc {compiler.c.flags} {compiler.warning_flags} {compiler.defines} {build.extra_flags} {compiler.c.extra_flags} {includes} {compiler.includes} "{source_file}" -o "{object_file}"
+recipe.cpp.o.pattern="{compiler.path}{compiler.cmd}" c++ {compiler.cpp.flags} {compiler.warning_flags} {compiler.defines} {build.extra_flags} {compiler.cpp.extra_flags} {includes} {compiler.includes} "{source_file}" -o "{object_file}"
+recipe.S.o.pattern="{compiler.path}{compiler.cmd}" cc {compiler.S.flags} {compiler.defines} {build.extra_flags} {compiler.S.extra_flags} {includes} {compiler.includes} "{source_file}" -o "{object_file}"
+recipe.ar.pattern="{compiler.path}{compiler.cmd}" ar rcs "{archive_file_path}" "{object_file}"
+recipe.c.combine.pattern="{compiler.path}{compiler.cmd}" c++ {compiler.ldflags} {compiler.c.elf.extra_flags} -o "{build.path}/{build.project_name}.elf" {object_files} "{archive_file_path}" {compiler.libs}
+
+# Used to find which libraries a sketch includes, and to generate function prototypes.
+recipe.preproc.macros="{compiler.path}{compiler.cmd}" c++ {compiler.cpp.flags} -w {compiler.defines} {build.extra_flags} {compiler.cpp.extra_flags} {includes} {compiler.includes} -x c++ -E -CC "{source_file}" -o "{preprocessed_file_path}"
+
+# Upload (over SSH, by edison-upload) is added with the uploader.
