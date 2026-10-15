@@ -91,6 +91,28 @@ func TestHostKeyTrustOnFirstUse(t *testing.T) {
 	}
 }
 
+func TestHostKeyRememberedOnceAcrossDials(t *testing.T) {
+	dir := t.TempDir()
+	cb, err := hostKeyCallback(dir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &net.TCPAddr{IP: net.ParseIP("192.168.1.40"), Port: 22}
+	k := newHostKey(t)
+	for i := 0; i < 2; i++ { // connect dials with the key, then with the password
+		if err := cb("192.168.1.40:22", remote, k); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "known_hosts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(data), "\n"); n != 1 {
+		t.Errorf("known_hosts has %d lines, want 1:\n%s", n, data)
+	}
+}
+
 func TestUSBAcceptsAnyHostKey(t *testing.T) {
 	dir := t.TempDir()
 	cb, err := hostKeyCallback(dir, true)

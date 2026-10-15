@@ -92,11 +92,19 @@ func hostKeyCallback(dir string, usb bool) (ssh.HostKeyCallback, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Keys remembered by this callback: the file is only read once, and connect may dial
+	// twice (key, then password).
+	added := map[string]bool{}
 	return func(host string, remote net.Addr, key ssh.PublicKey) error {
+		id := knownhosts.Normalize(host) + " " + string(key.Marshal())
+		if added[id] {
+			return nil
+		}
 		err := check(host, remote, key)
 		var keyErr *knownhosts.KeyError
 		if errors.As(err, &keyErr) && len(keyErr.Want) == 0 {
 			logf("New board at %s; remembering its host key %s", host, ssh.FingerprintSHA256(key))
+			added[id] = true
 			return appendKnownHost(path, host, key)
 		}
 		if errors.As(err, &keyErr) {
