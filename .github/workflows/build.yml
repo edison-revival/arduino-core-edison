@@ -107,10 +107,12 @@ jobs:
           file=arduino-cli_${ARDUINO_CLI_VERSION}_${{ matrix.cli }}
           curl -fsSL -o "$file" \
             "https://github.com/arduino/arduino-cli/releases/download/v$ARDUINO_CLI_VERSION/$file"
-          echo "${{ matrix.sha256 }}  $file" | shasum -a 256 -c -
+          sha256=sha256sum
+          command -v sha256sum >/dev/null || sha256="shasum -a 256" # macOS
+          echo "${{ matrix.sha256 }}  $file" | $sha256 -c -
           mkdir cli
           case $file in
-            *.zip) unzip -q "$file" -d cli ;;
+            *.zip) pwsh -NoProfile -Command "Expand-Archive '$file' cli" ;;
             *) tar -C cli -xzf "$file" ;;
           esac
 

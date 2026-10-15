@@ -77,7 +77,7 @@ package_json() {
 archive() {
     file=$2.tar.xz
     tar -C "$1" --transform "s,^\.,$2," --sort=name --owner=0 --group=0 --numeric-owner \
-        --mtime="@$SOURCE_DATE_EPOCH" -cf - . | xz -T0 -9 >"$out/$file"
+        --mtime="@$SOURCE_DATE_EPOCH" -cf - . | xz -T0 >"$out/$file"
     jq -n --arg url "$url/$file" --arg file "$file" \
         --arg sha "$(sha256sum "$out/$file" | cut -d' ' -f1)" \
         --arg size "$(stat -c %s "$out/$file")" \
