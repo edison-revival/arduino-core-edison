@@ -34,6 +34,7 @@ class TtySerial : public arduino::HardwareSerial {
     const char *path_;
     bool usb_;
     int fd_ = -1;
+    bool stalled_ = false;  // a write timed out: nothing is reading the USB port
     uint8_t rx_[256];
     size_t rx_head_ = 0, rx_tail_ = 0;
 };

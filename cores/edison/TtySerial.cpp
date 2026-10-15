@@ -13,6 +13,7 @@
 #include <poll.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -78,7 +79,17 @@ void TtySerial::begin(unsigned long baud, uint16_t config) {
 }
 
 void TtySerial::end() {
-    if (fd_ >= 0) close(fd_);
+    if (fd_ < 0) return;
+    if (usb_) {
+        // Closing the USB gadget port waits up to 15 s for unsent output, which never goes
+        // while no host reads it: give it a moment, then discard the rest.
+        int pending = 0;
+        for (int i = 0; i < 10 && ioctl(fd_, TIOCOUTQ, &pending) == 0 && pending > 0; i++) {
+            usleep(10000);
+        }
+        tcflush(fd_, TCOFLUSH);
+    }
+    close(fd_);
     fd_ = -1;
 }
 
@@ -111,13 +122,16 @@ size_t TtySerial::write(const uint8_t *buf, size_t size) {
         ssize_t n = ::write(fd_, buf + done, size - done);
         if (n > 0) {
             done += size_t(n);
+            stalled_ = false;
             continue;
         }
         if (n < 0 && errno == EINTR) continue;
-        if (n < 0 && errno == EAGAIN) {
-            // A USB port with nobody reading would block forever: wait briefly, then drop.
+        if (n < 0 && errno == EAGAIN && !stalled_) {
+            // A USB port with nobody reading would block forever: wait briefly, then drop
+            // output (without waiting again) until the host reads some.
             pollfd p = {fd_, POLLOUT, 0};
             if (poll(&p, 1, usb_ ? 20 : 1000) > 0) continue;
+            stalled_ = usb_;
         }
         break;
     }

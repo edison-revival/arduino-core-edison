@@ -43,6 +43,8 @@ int main() {
         loop();
         if (arduino::serialEventRun) arduino::serialEventRun();
     }
+    Serial.end();
+    Serial1.end();
     edison_gpio_release_all();
     return 0;
 }
