@@ -56,32 +56,10 @@ later uploads don't need it; the IDE still asks once per session, and the field 
 be left empty. On the network, the board's host key is remembered on first use; if it
 changes (another board at that address), `edison-upload -forget ADDRESS` clears it.
 
-## Building from source
+## Contributing
 
-You need [arduino-cli](https://arduino.github.io/arduino-cli/) (or the Arduino IDE),
-[Zig 0.17.0](https://ziglang.org/download/) and Docker (to build the libgpiod sysroot and
-the uploader).
-
-1. Build the sysroot and the tools (`edison-upload`, and `edison-cc`, a small wrapper the
-   build uses): `tools/make-sysroot.sh` and `tools/build-tools.sh` (they write `dist/`).
-2. Put this repository (or a link to it) at `<sketchbook>/hardware/edison-revival/edison`.
-3. Create `platform.local.txt` next to `platform.txt`, pointing at the tools (forward
-   slashes, and a trailing slash on `compiler.path`; pick your computer's tools folder):
-
-   ```
-   compiler.path=/path/to/zig-x86_64-linux-0.17.0/
-   compiler.sysroot=/path/to/arduino-core-edison/dist/edison-sysroot
-   edison.tools.path=/path/to/arduino-core-edison/dist/edison-tools/linux-amd64
-   ```
-
-4. `arduino-cli compile -b edison-revival:edison:edison tests/sketches/Blink`, then
-   `arduino-cli upload -b edison-revival:edison:edison -p PORT tests/sketches/Blink`.
-
-**Release archives:** after step 1, `tools/package.sh VERSION [PREVIOUS_INDEX]` writes the
-Boards Manager and PlatformIO archives and the index to `dist/release/`, as CI does
-(`.github/workflows/build.yml`). It downloads Zig from ziglang.org and checks its
-checksums; put the archives in `downloads/` to build without that site. Pushing a `v*` tag
-whose version matches `platform.txt` publishes a release (`release.yml`).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for building from source, tests, releasing and
+conventions.
 
 ## License
 
