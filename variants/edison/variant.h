@@ -28,6 +28,7 @@ struct EdisonPinDesc {
     const char *busy;              // the peripheral that owns the pin, if any
     int adc = -1;                  // the kit ADC's channel for this pin, or -1
     EdisonMuxSetting adc_mux{};    // the line to set to route the pin to the ADC
+    int pwm = -1;                  // the SoC PWM channel (pwmchip0) for this pin, or -1
 };
 
 // Lines that route the header's SPI pins (IO10-IO13) to their GPIOs rather than SPI5.

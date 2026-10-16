@@ -18,6 +18,8 @@ extern "C" {
 // analogRead()'s resolution in bits: 10 (0-1023) by default, as on AVR boards; the kit's
 // ADC has 12. As on ARM Arduino boards.
 void analogReadResolution(int bits);
+// analogWrite()'s resolution in bits: 8 (0-255) by default, as on AVR boards.
+void analogWriteResolution(int bits);
 #ifdef __cplusplus
 }
 #endif

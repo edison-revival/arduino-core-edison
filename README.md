@@ -6,8 +6,8 @@ An Arduino core for the Intel Edison on the Arduino expansion board, for boards 
 
 **Status: early.** Works: `pinMode`/`digitalWrite`/`digitalRead` on the header pins,
 `Serial` (USB) and `Serial1` (IO0/IO1), `millis`/`micros`/delays, upload over USB or the
-network, `analogRead` on A0-A3, `Wire` (I2C). Not yet: `analogWrite` (PWM), `SPI`,
-interrupts.
+network, `analogRead` on A0-A3, `analogWrite` (PWM) on ~3/~5/~6/~9, `Wire` (I2C). Not yet:
+`SPI`, interrupts.
 
 ## Installing
 
@@ -48,6 +48,11 @@ as the `edison` user, and restarts it when a new one arrives.
   are the I2C pins, so they can't be analog inputs. Needs edison-image v0.2.4 or later:
   on earlier images the ADC is left in its half range, and readings saturate above about
   half of IOREF.
+- **analogWrite** drives hardware PWM on ~3, ~5, ~6 and ~9 (the SoC's four PWM channels, with
+  the kit's default PWM jumpers J11/J12) at 490 Hz, 0-255 by default (`analogWriteResolution()`,
+  up to 16 bits). Other pins are set HIGH or LOW, as on AVR boards. `pinMode()` takes a pin
+  back from PWM. Needs edison-image v0.2.5 or later, which switches the pins to PWM for
+  sketches (`edison-pinmux`); on earlier images those pins are set HIGH or LOW too.
 - **Wire** is I2C-6 on SDA/SCL (A4/A5), through Linux's i2c-dev: controller mode only.
   `endTransmission(false)` followed by `requestFrom()` (a register read) is sent as one
   transfer with a repeated start. The bus speed is set by the kernel; `setClock()` does

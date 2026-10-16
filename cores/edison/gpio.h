@@ -12,6 +12,15 @@
 // ADC channel, or -1 (reported once) if the pin can't be an analog input.
 int edison_analog_select(unsigned pin);
 
+// Route a header pin to its PWM output (once; a later pinMode() takes it back). Returns
+// the PWM channel, or -1 if the pin has none or can't be had (reported once).
+int edison_pwm_select(unsigned pin);
+
+// In wiring_pwm.cpp: switch a PWM channel's SoC pin to its PWM function (edison-image's
+// edison-pinmux service), and stop a channel when its pin goes back to GPIO use.
+bool edison_pwm_pinmux(int channel);
+void edison_pwm_stop(int channel);
+
 // Return the sketch's pins to inputs and release every line it holds, so the next sketch
 // can take them. Called once, when the sketch is stopped; the process must exit after it,
 // as pin functions called from then on block.

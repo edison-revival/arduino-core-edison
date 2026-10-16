@@ -115,7 +115,14 @@ gpiod_line_request *request_of(Line l) {
     return it == held.end() ? nullptr : it->second;
 }
 
-enum class State { Unset, Input, Output, Analog, Failed };
+void release_line(Line l) {
+    auto it = held.find(std::make_pair(l.chip, l.offset));
+    if (it == held.end()) return;
+    gpiod_line_request_release(it->second);
+    held.erase(it);
+}
+
+enum class State { Unset, Input, Output, Analog, Pwm, Failed };
 State state[NUM_DIGITAL_PINS];
 
 // Report each pin's problem once: sketches call these functions in loops.
@@ -172,6 +179,8 @@ bool configure(pin_size_t pin, PinMode mode) {
 }
 
 void set_mode(pin_size_t pin, PinMode mode) {
+    // Requesting the SoC line below returns the pin from PWM to GPIO; stop the PWM first.
+    if (state[pin] == State::Pwm) edison_pwm_stop(edison_pins[pin].pwm);
     if (configure(pin, mode)) {
         state[pin] = mode == OUTPUT ? State::Output : State::Input;
     } else {
@@ -212,11 +221,51 @@ bool configure_analog(pin_size_t pin) {
     return true;
 }
 
+// The pin as a PWM output: the level shifter to output, the pull resistor off, and the SoC
+// pin switched from its GPIO to its PWM function (which needs the GPIO line let go).
+bool configure_pwm(pin_size_t pin) {
+    const EdisonPinDesc &p = edison_pins[pin];
+    if (p.busy) {
+        errno = EBUSY;
+        report(pin, "in use by", p.busy);
+        return false;
+    }
+    release_line(soc_line(p.soc));
+    set_pull(p, INPUT);
+    if (!set_line(named_line(p.dir), Dir::Out, 1)) {
+        report(pin, "can't claim its PWM lines", strerror(errno));
+        return false;
+    }
+    if (!edison_pwm_pinmux(p.pwm)) {
+        report(pin, "analogWrite",
+               "can't switch the pin to PWM (needs edison-image v0.2.5 or later); "
+               "writing HIGH/LOW instead");
+        return false;
+    }
+    return true;
+}
+
 // Held by every pin function, and taken for good by edison_gpio_release_all() when the
 // sketch is stopped (from another thread), so the two never touch the lines at once.
 std::mutex gpio_lock;
 
 }  // namespace
+
+int edison_pwm_select(unsigned pin) {
+    if (pin >= NUM_DIGITAL_PINS || edison_pins[pin].pwm < 0) return -1;
+    std::lock_guard<std::mutex> lock(gpio_lock);
+    static bool pwm_failed[NUM_DIGITAL_PINS];  // don't retry on every analogWrite()
+    if (state[pin] == State::Pwm) return edison_pins[pin].pwm;
+    if (pwm_failed[pin]) return -1;
+    if (!configure_pwm(pin_size_t(pin))) {
+        // Leave it to analogWrite() to drive the pin as a digital output instead.
+        pwm_failed[pin] = true;
+        state[pin] = State::Unset;
+        return -1;
+    }
+    state[pin] = State::Pwm;
+    return edison_pins[pin].pwm;
+}
 
 int edison_analog_select(unsigned pin) {
     if (pin >= NUM_DIGITAL_PINS) return -1;
@@ -270,8 +319,9 @@ void edison_gpio_release_all() {
     // Leave the pins as inputs, as a reset does on other boards: the lines keep their last
     // levels once released, so an output would otherwise go on driving.
     for (pin_size_t pin = 0; pin < NUM_DIGITAL_PINS; pin++) {
+        if (state[pin] == State::Pwm) edison_pwm_stop(edison_pins[pin].pwm);
         if (state[pin] == State::Output || state[pin] == State::Input ||
-            state[pin] == State::Analog) {
+            state[pin] == State::Analog || state[pin] == State::Pwm) {
             configure(pin, INPUT);
         }
     }
