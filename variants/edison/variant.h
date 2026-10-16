@@ -26,7 +26,14 @@ struct EdisonPinDesc {
     const char *pull;              // HIGH = pull-up, LOW = pull-down, input = none
     EdisonMuxSetting gpio_mux[2];  // lines to set to route the pin to the GPIO
     const char *busy;              // the peripheral that owns the pin, if any
+    int adc = -1;                  // the kit ADC's channel for this pin, or -1
+    EdisonMuxSetting adc_mux{};    // the line to set to route the pin to the ADC
 };
+
+// Lines that route the header's SPI pins (IO10-IO13) to their GPIOs rather than SPI5.
+// Driven to 0 for analogRead() too: the kit's ADC is on SPI5, and with these left
+// floating its bus is connected to the header and it reads nothing.
+extern const EdisonMuxSetting edison_spi_isolate[4];
 
 extern const EdisonPinDesc edison_pins[];
 extern const size_t edison_num_pins;

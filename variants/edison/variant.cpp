@@ -30,15 +30,19 @@ const EdisonPinDesc edison_pins[] = {
     /* 11 */ {43, "MUX23_DIR", "DIG11_PU_PD", {{"SPI_TXD_SEL", 0}, {"MUX22_SEL", 1}}, nullptr},
     /* 12 */ {42, "MUX20_DIR", "DIG12_PU_PD", {{"SPI_RXD_SEL", 0}}, nullptr},
     /* 13 */ {40, "MUX18_DIR", "DIG13_PU_PD", {{"SPI_CLK_SEL", 0}}, nullptr},
-    /* A0 */ {44, "MUX14_DIR", "A0_PU_PD", {{"MUX15_SEL", 0}}, nullptr},
-    /* A1 */ {45, "MUX12_DIR", "A1_PU_PD", {{"MUX13_SEL", 0}}, nullptr},
-    /* A2 */ {46, "MUX10_DIR", "A2_PU_PD", {{"MUX11_SEL", 0}}, nullptr},
-    /* A3 */ {47, "MUX8_DIR", "A3_PU_PD", {{"MUX9_SEL", 0}}, nullptr},
+    /* A0 */ {44, "MUX14_DIR", "A0_PU_PD", {{"MUX15_SEL", 0}}, nullptr, 0, {"MUX15_SEL", 1}},
+    /* A1 */ {45, "MUX12_DIR", "A1_PU_PD", {{"MUX13_SEL", 0}}, nullptr, 1, {"MUX13_SEL", 1}},
+    /* A2 */ {46, "MUX10_DIR", "A2_PU_PD", {{"MUX11_SEL", 0}}, nullptr, 2, {"MUX11_SEL", 1}},
+    /* A3 */ {47, "MUX8_DIR", "A3_PU_PD", {{"MUX9_SEL", 0}}, nullptr, 3, {"MUX9_SEL", 1}},
+    // A4/A5 are I2C-6 in edison-image, so they can't be analog inputs either.
     /* A4 */ {14, "MUX6_DIR", "A4_PU_PD", {}, "I2C-6 (Wire)"},
     /* A5 */ {165, "MUX4_DIR", "A5_PU_PD", {}, "I2C-6 (Wire)"},
 };
 
 const size_t edison_num_pins = sizeof(edison_pins) / sizeof(edison_pins[0]);
+
+const EdisonMuxSetting edison_spi_isolate[4] = {
+    {"SPI_CLK_SEL", 0}, {"SPI_TXD_SEL", 0}, {"SPI_RXD_SEL", 0}, {"SPI_FS_SEL", 0}};
 
 static_assert(sizeof(edison_pins) / sizeof(edison_pins[0]) == NUM_DIGITAL_PINS,
               "one entry per digital pin");

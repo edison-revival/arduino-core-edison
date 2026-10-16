@@ -115,7 +115,7 @@ gpiod_line_request *request_of(Line l) {
     return it == held.end() ? nullptr : it->second;
 }
 
-enum class State { Unset, Input, Output, Failed };
+enum class State { Unset, Input, Output, Analog, Failed };
 State state[NUM_DIGITAL_PINS];
 
 // Report each pin's problem once: sketches call these functions in loops.
@@ -179,11 +179,53 @@ void set_mode(pin_size_t pin, PinMode mode) {
     }
 }
 
+// The pin as an analog input: the level shifter and pull resistor out of the way, and the
+// mux switched from the GPIO to the ADC.
+bool configure_analog(pin_size_t pin) {
+    const EdisonPinDesc &p = edison_pins[pin];
+    if (p.busy) {
+        errno = EBUSY;
+        report(pin, "in use by", p.busy);
+        return false;
+    }
+    if (p.adc < 0) {
+        report(pin, "analogRead", "not an analog input (use A0-A3)");
+        return false;
+    }
+    // Isolate the ADC's SPI bus from the header (see edison_spi_isolate). Busy when SPI is
+    // enabled on the header, which isolates it properly; nothing to do then.
+    static bool isolated = false;
+    if (!isolated) {
+        for (const EdisonMuxSetting &m : edison_spi_isolate) {
+            set_line(named_line(m.line), Dir::Out, m.value);
+        }
+        isolated = true;
+    }
+    Line soc = soc_line(p.soc), dir = named_line(p.dir);
+    bool ok = set_line(soc, Dir::In) && set_line(dir, Dir::Out, 0) &&
+              set_line(named_line(p.adc_mux.line), Dir::Out, p.adc_mux.value);
+    if (ok) set_pull(p, INPUT);
+    if (!ok) {
+        report(pin, "can't claim its analog lines", strerror(errno));
+        return false;
+    }
+    return true;
+}
+
 // Held by every pin function, and taken for good by edison_gpio_release_all() when the
 // sketch is stopped (from another thread), so the two never touch the lines at once.
 std::mutex gpio_lock;
 
 }  // namespace
+
+int edison_analog_select(unsigned pin) {
+    if (pin >= NUM_DIGITAL_PINS) return -1;
+    std::lock_guard<std::mutex> lock(gpio_lock);
+    if (state[pin] != State::Analog) {
+        state[pin] = configure_analog(pin_size_t(pin)) ? State::Analog : State::Failed;
+    }
+    return state[pin] == State::Analog ? edison_pins[pin].adc : -1;
+}
 
 void pinMode(pin_size_t pin, PinMode mode) {
     if (pin >= NUM_DIGITAL_PINS) return;
@@ -228,7 +270,10 @@ void edison_gpio_release_all() {
     // Leave the pins as inputs, as a reset does on other boards: the lines keep their last
     // levels once released, so an output would otherwise go on driving.
     for (pin_size_t pin = 0; pin < NUM_DIGITAL_PINS; pin++) {
-        if (state[pin] == State::Output || state[pin] == State::Input) configure(pin, INPUT);
+        if (state[pin] == State::Output || state[pin] == State::Input ||
+            state[pin] == State::Analog) {
+            configure(pin, INPUT);
+        }
     }
     for (auto &h : held) gpiod_line_request_release(h.second);
     held.clear();

@@ -86,8 +86,8 @@ archive() {
 
 # The core: what the Boards Manager installs as the platform, and PlatformIO's framework.
 mkdir "$stage/core"
-cp -r /src/boards.txt /src/platform.txt /src/cores /src/variants /src/LICENSE \
-    /src/README.md "$stage/core/"
+cp -r /src/boards.txt /src/platform.txt /src/cores /src/variants /src/libraries \
+    /src/LICENSE /src/README.md "$stage/core/"
 package_json framework-arduino-edison "$version" "Arduino core for the Intel Edison" \
     LGPL-2.1-or-later >"$stage/core/package.json"
 core=$(archive "$stage/core" "edison-core-$version")
