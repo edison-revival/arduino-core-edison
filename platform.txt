@@ -60,7 +60,7 @@ tools.edison-upload.cmd=edison-upload
 tools.edison-upload.cmd.windows=edison-upload.exe
 tools.edison-upload.upload.params.verbose=-v
 tools.edison-upload.upload.params.quiet=
-tools.edison-upload.upload.field.password=Board password (first upload only)
+tools.edison-upload.upload.field.password=Board password (first upload; after that, type anything)
 tools.edison-upload.upload.field.password.secret=true
 # -flag=value, as one argument each: an empty value (no password) mustn't drop out.
 tools.edison-upload.upload.pattern="{path}/{cmd}" {upload.verbose} "-port={upload.port.address}" "-protocol={upload.port.protocol}" "-password={upload.field.password}" "{build.path}/{build.project_name}.elf"

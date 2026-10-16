@@ -54,8 +54,8 @@ Pick either port in the IDE (or `arduino-cli upload -p`):
 
 The upload is done over SSH by `edison-upload` ([tools/edison-upload](tools/edison-upload)). The first upload from a computer asks for the `edison` user's password, and installs
 a key for that computer (kept in `edison-upload` under your user config directory), so
-later uploads don't need it; the IDE still asks once per session, and the field can then
-be left empty. On the network, the board's host key is remembered on first use; if it
+later uploads don't need it. The IDE still asks once per session and won't accept an empty
+field, so type anything there: with the key installed, the password isn't used. On the network, the board's host key is remembered on first use; if it
 changes (another board at that address), `edison-upload -forget ADDRESS` clears it.
 
 ## Contributing
