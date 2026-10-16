@@ -118,8 +118,11 @@ jobs:
 
       - name: Install the core from the index
         run: |
-          # The index points at the release; serve this build's archives instead.
-          sed "s|https://github.com/open-edison/arduino-core-edison/releases/download/v[^/]*|http://127.0.0.1:8765|" \
+          # The index points at the release; serve this build's archives instead. Only this
+          # version's: tool versions carried over from earlier releases (Zig) keep their
+          # entries, so they come from those releases and are checked against them.
+          version=$(sed -n 's/^version=//p' core/platform.txt)
+          sed "s|https://github.com/open-edison/arduino-core-edison/releases/download/v$version/|http://127.0.0.1:8765/|" \
             release/package_open-edison_index.json > release/package_local_index.json
           py=$(command -v python || command -v python3)
           "$py" -m http.server 8765 --bind 127.0.0.1 --directory release >/dev/null 2>&1 &
