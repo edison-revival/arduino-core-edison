@@ -149,17 +149,23 @@ func forgetHost(path, host string) error {
 	return os.WriteFile(path, []byte(out), 0o600)
 }
 
+// dial logs in to addr. The host key is checked against addr as given, even when the name
+// is resolved some other way (dialAddr).
 func dial(addr, user string, hostKey ssh.HostKeyCallback, auth ...ssh.AuthMethod) (*client, error) {
-	c, err := ssh.Dial("tcp", addr, &ssh.ClientConfig{
-		User:            user,
-		Auth:            auth,
-		HostKeyCallback: hostKey,
-		Timeout:         10 * time.Second,
-	})
+	conn, err := net.DialTimeout("tcp", dialAddr(addr), 10*time.Second)
 	if err != nil {
 		return nil, err
 	}
-	return &client{c}, nil
+	sc, chans, reqs, err := ssh.NewClientConn(conn, addr, &ssh.ClientConfig{
+		User:            user,
+		Auth:            auth,
+		HostKeyCallback: hostKey,
+	})
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return &client{ssh.NewClient(sc, chans, reqs)}, nil
 }
 
 func isAuthError(err error) bool {
