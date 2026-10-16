@@ -43,8 +43,11 @@ as the `edison` user, and restarts it when a new one arrives.
   KiB from before can still arrive when the port is opened.
 - **analogRead** uses the kit's 12-bit ADC (TI ADS7951) on A0-A3, returning 0-1023 by
   default (`analogReadResolution(12)` for 0-4095). Full scale is IOREF, the 5 V or 3.3 V
-  set by jumper J9 (with J8 on IOREF); `analogReference()` does nothing, as the reference
-  is set by the jumpers. A4/A5 are the I2C pins, so they can't be analog inputs.
+  set by jumper J9 (with J8 on IOREF); on USB power the 5 V rail, and so IOREF, is nearer
+  4.5 V. `analogReference()` does nothing, as the reference is set by the jumpers. A4/A5
+  are the I2C pins, so they can't be analog inputs. Needs edison-image v0.2.4 or later:
+  on earlier images the ADC is left in its half range, and readings saturate above about
+  half of IOREF.
 - **Wire** is I2C-6 on SDA/SCL (A4/A5), through Linux's i2c-dev: controller mode only.
   `endTransmission(false)` followed by `requestFrom()` (a register read) is sent as one
   transfer with a repeated start. The bus speed is set by the kernel; `setClock()` does
