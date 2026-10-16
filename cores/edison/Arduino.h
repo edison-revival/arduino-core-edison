@@ -20,6 +20,10 @@ extern "C" {
 void analogReadResolution(int bits);
 // analogWrite()'s resolution in bits: 8 (0-255) by default, as on AVR boards.
 void analogWriteResolution(int bits);
+// Interrupt handlers (attachInterrupt) run in a thread of their own; between these two
+// they wait, so the sketch can safely read what they change.
+void interrupts(void);
+void noInterrupts(void);
 #ifdef __cplusplus
 }
 #endif

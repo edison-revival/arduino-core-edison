@@ -149,7 +149,8 @@ jobs:
         run: |
           cli=cli/arduino-cli
           $cli lib install elapsedMillis
-          for sketch in core/tests/sketches/* sketchbook/libraries/elapsedMillis/examples/*; do
+          for sketch in core/tests/sketches/* core/libraries/*/examples/* \
+            sketchbook/libraries/elapsedMillis/examples/*; do
             echo "::group::$sketch"
             $cli compile -b open-edison:edison:edison --warnings all \
               --output-dir "out/$(basename "$sketch")" "$sketch"

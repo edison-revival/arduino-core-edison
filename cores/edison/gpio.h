@@ -16,6 +16,14 @@ int edison_analog_select(unsigned pin);
 // the PWM channel, or -1 if the pin has none or can't be had (reported once).
 int edison_pwm_select(unsigned pin);
 
+// Edge detection on an input pin, for attachInterrupt(): edges is 0 (off), RISING, FALLING
+// or CHANGE. Returns a file descriptor to poll for edges, or -1 (reported once).
+int edison_gpio_edges(unsigned pin, int edges);
+
+// Read the edges waiting on a pin (after a poll says there are some), oldest first,
+// calling cb(rising, arg) for each with no locks held.
+void edison_gpio_events(unsigned pin, void (*cb)(bool rising, void *arg), void *arg);
+
 // In wiring_pwm.cpp: switch a PWM channel's SoC pin to its PWM function (edison-image's
 // edison-pinmux service), and stop a channel when its pin goes back to GPIO use.
 bool edison_pwm_pinmux(int channel);

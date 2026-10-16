@@ -251,6 +251,60 @@ std::mutex gpio_lock;
 
 }  // namespace
 
+int edison_gpio_edges(unsigned pin, int edges) {
+    if (pin >= NUM_DIGITAL_PINS) return -1;
+    std::lock_guard<std::mutex> lock(gpio_lock);
+    // As on other boards, a pin starts as an input; attachInterrupt() doesn't change one
+    // that pinMode() made an output or another function.
+    if (state[pin] == State::Unset) set_mode(pin_size_t(pin), INPUT);
+    if (state[pin] != State::Input) {
+        report(pin_size_t(pin), "attachInterrupt", "the pin isn't an input (pinMode INPUT)");
+        return -1;
+    }
+    Line soc = soc_line(edison_pins[pin].soc);
+    gpiod_line_request *r = request_of(soc);
+    if (!r) return -1;
+    gpiod_line_settings *s = gpiod_line_settings_new();
+    gpiod_line_config *lc = gpiod_line_config_new();
+    int fd = -1;
+    if (s && lc) {
+        gpiod_line_settings_set_direction(s, GPIOD_LINE_DIRECTION_INPUT);
+        gpiod_line_settings_set_edge_detection(
+            s, edges == RISING    ? GPIOD_LINE_EDGE_RISING
+               : edges == FALLING ? GPIOD_LINE_EDGE_FALLING
+               : edges == CHANGE  ? GPIOD_LINE_EDGE_BOTH
+                                  : GPIOD_LINE_EDGE_NONE);
+        gpiod_line_config_add_line_settings(lc, &soc.offset, 1, s);
+        if (gpiod_line_request_reconfigure_lines(r, lc) == 0) {
+            fd = gpiod_line_request_get_fd(r);
+        } else {
+            report(pin_size_t(pin), "attachInterrupt", strerror(errno));
+        }
+    }
+    gpiod_line_config_free(lc);
+    gpiod_line_settings_free(s);
+    return fd;
+}
+
+void edison_gpio_events(unsigned pin, void (*cb)(bool rising, void *arg), void *arg) {
+    if (pin >= NUM_DIGITAL_PINS) return;
+    bool rising[16];
+    int n = 0;
+    {
+        std::lock_guard<std::mutex> lock(gpio_lock);
+        static gpiod_edge_event_buffer *buf = gpiod_edge_event_buffer_new(16);
+        gpiod_line_request *r = request_of(soc_line(edison_pins[pin].soc));
+        if (!r || !buf) return;
+        n = gpiod_line_request_read_edge_events(r, buf, 16);
+        for (int i = 0; i < n; i++) {
+            gpiod_edge_event *e = gpiod_edge_event_buffer_get_event(buf, i);
+            rising[i] = gpiod_edge_event_get_event_type(e) == GPIOD_EDGE_EVENT_RISING_EDGE;
+        }
+    }
+    // Outside the lock: the handler will likely use the pins.
+    for (int i = 0; i < n; i++) cb(rising[i], arg);
+}
+
 int edison_pwm_select(unsigned pin) {
     if (pin >= NUM_DIGITAL_PINS || edison_pins[pin].pwm < 0) return -1;
     std::lock_guard<std::mutex> lock(gpio_lock);

@@ -24,6 +24,7 @@
 #include <string>
 
 #include "Arduino.h"
+#include "edison_pwm.h"
 #include "gpio.h"
 
 namespace {
@@ -37,6 +38,7 @@ std::mutex lock;
 
 struct Channel {
     bool running = false;
+    long period = 0;
     long duty = -1;
 };
 Channel channels[CHANNELS];
@@ -93,8 +95,8 @@ void report_once(int channel, const char *what) {
     fprintf(stderr, "analogWrite: PWM channel %d: %s: %s\n", channel, what, strerror(errno));
 }
 
-// Export the channel and run it at 490 Hz with nothing on.
-bool start(int c) {
+// Export the channel and run it with the given period and nothing on.
+bool start(int c, long period) {
     std::string chip = chip_dir();
     if (chip.empty()) return false;
     std::string ch = chip + "/pwm" + std::to_string(c);
@@ -104,13 +106,44 @@ bool start(int c) {
         return false;
     }
     // Duty first: the period can't be set below it.
-    if (!write_file(ch + "/duty_cycle", 0) || !write_file(ch + "/period", PERIOD_NS) ||
+    if (!write_file(ch + "/duty_cycle", 0) || !write_file(ch + "/period", period) ||
         !write_file(ch + "/enable", 1)) {
         report_once(c, "setup");
         return false;
     }
     channels[c].running = true;
+    channels[c].period = period;
     channels[c].duty = 0;
+    return true;
+}
+
+// The controller sets the high time in 255ths of the period, and the driver rounds down
+// (pwm-lpss): pick the nearest step, and ask for its time rounded up so it stays there.
+long nearest_step(long period, long duty) {
+    long long steps = (static_cast<long long>(duty) * 255 + period / 2) / period;
+    return long((steps * period + 254) / 255);
+}
+
+// Set a running channel's period and high time (nanoseconds), changing only what changed.
+bool set(int c, long period, long duty) {
+    duty = duty >= period ? period : nearest_step(period, duty);
+    std::string ch = chip_dir() + "/pwm" + std::to_string(c);
+    if (period != channels[c].period) {
+        // The period can't be set below the current duty: clear the duty first.
+        if (!write_file(ch + "/duty_cycle", 0) || !write_file(ch + "/period", period)) {
+            report_once(c, "period");
+            return false;
+        }
+        channels[c].period = period;
+        channels[c].duty = 0;
+    }
+    if (duty != channels[c].duty) {
+        if (!write_file(ch + "/duty_cycle", duty)) {
+            report_once(c, "duty_cycle");
+            return false;
+        }
+        channels[c].duty = duty;
+    }
     return true;
 }
 
@@ -156,15 +189,22 @@ void analogWrite(pin_size_t pin, int value) {
         return;
     }
     std::lock_guard<std::mutex> l(lock);
-    if (!channels[c].running && !start(c)) return;
-    long duty = PERIOD_NS * value / max;
-    if (duty == channels[c].duty) return;
-    std::string path = chip_dir() + "/pwm" + std::to_string(c) + "/duty_cycle";
-    if (write_file(path, duty)) {
-        channels[c].duty = duty;
-    } else {
-        report_once(c, "duty_cycle");
-    }
+    if (!channels[c].running && !start(c, PERIOD_NS)) return;
+    set(c, PERIOD_NS, PERIOD_NS * value / max);
+}
+
+bool edisonPwmWrite(uint8_t pin, uint32_t period_ns, uint32_t high_ns) {
+    if (period_ns == 0 || high_ns > period_ns) return false;
+    int c = edison_pwm_select(pin);
+    if (c < 0) return false;
+    std::lock_guard<std::mutex> l(lock);
+    if (!channels[c].running && !start(c, long(period_ns))) return false;
+    return set(c, long(period_ns), long(high_ns));
+}
+
+void edisonPwmStop(uint8_t pin) {
+    int c = edison_pwm_select(pin);
+    if (c >= 0) edison_pwm_stop(c);
 }
 
 void analogWriteResolution(int bits) {

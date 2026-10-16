@@ -6,8 +6,8 @@ An Arduino core for the Intel Edison on the Arduino expansion board, for boards 
 
 **Status: early.** Works: `pinMode`/`digitalWrite`/`digitalRead` on the header pins,
 `Serial` (USB) and `Serial1` (IO0/IO1), `millis`/`micros`/delays, upload over USB or the
-network, `analogRead` on A0-A3, `analogWrite` (PWM) on ~3/~5/~6/~9, `Wire` (I2C). Not yet:
-`SPI`, interrupts.
+network, `analogRead` on A0-A3, `analogWrite` (PWM) on ~3/~5/~6/~9, `attachInterrupt`,
+`Wire` (I2C) and `Servo`. Not yet: `SPI`, `tone`, `pulseIn`.
 
 ## Installing
 
@@ -53,6 +53,15 @@ as the `edison` user, and restarts it when a new one arrives.
   up to 16 bits). Other pins are set HIGH or LOW, as on AVR boards. `pinMode()` takes a pin
   back from PWM. Needs edison-image v0.2.5 or later, which switches the pins to PWM for
   sketches (`edison-pinmux`); on earlier images those pins are set HIGH or LOW too.
+- **attachInterrupt** works on any input pin: the kernel queues each edge, and a thread
+  calls the handler, so handlers run alongside `loop()` rather than pausing it.
+  `noInterrupts()`/`interrupts()` hold them off, so wrap reads of what a handler changes
+  in them, as on other boards. `RISING`, `FALLING` and `CHANGE` are exact (tested at 490
+  edges/s); `LOW`/`HIGH` are checked every millisecond while the level lasts.
+- **Servo** drives hobby servos on ~3, ~5, ~6 and ~9 (one each) from the hardware PWM at
+  50 Hz. The hardware sets the pulse in 255ths of the period: steps of 78 us at 50 Hz,
+  about 7.5 degrees over the default range. `servo.setRefreshInterval(10000)` (100 Hz)
+  halves them, for servos that accept it (most digital ones).
 - **Wire** is I2C-6 on SDA/SCL (A4/A5), through Linux's i2c-dev: controller mode only.
   `endTransmission(false)` followed by `requestFrom()` (a register read) is sent as one
   transfer with a repeated start. The bus speed is set by the kernel; `setClock()` does
