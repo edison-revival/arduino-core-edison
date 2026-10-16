@@ -1,10 +1,12 @@
-// Drive a 128x64 SSD1306 OLED (I2C, address 0x3C) over Wire with no libraries: initialise
-// it, then draw diagonal stripes that move, sending the whole 1 KiB screen each frame in
-// chunks of up to 255 bytes. Prints the frame rate on Serial.
+// Drive a 128x64 or 128x32 SSD1306 OLED (I2C, address 0x3C; set HEIGHT below) over Wire
+// with no libraries: initialise it, then draw diagonal stripes that move, sending the whole
+// screen (1 KiB or 512 bytes) each frame in chunks of up to 255 bytes. Prints the frame
+// rate on Serial.
 #include <Wire.h>
 
 const uint8_t OLED = 0x3C;
-const int WIDTH = 128, PAGES = 8;  // 64 rows = 8 pages of 8
+const int WIDTH = 128, HEIGHT = 32;  // 64 or 32
+const int PAGES = HEIGHT / 8;        // rows in pages of 8
 
 uint8_t command(uint8_t c) {
     Wire.beginTransmission(OLED);
@@ -19,13 +21,13 @@ void setup() {
     const uint8_t init[] = {
         0xAE,        // display off
         0xD5, 0x80,  // clock
-        0xA8, 0x3F,  // multiplex: 64 rows
+        0xA8, HEIGHT - 1,  // multiplex: number of rows
         0xD3, 0x00,  // display offset
         0x40,        // start line 0
         0x8D, 0x14,  // charge pump on
         0x20, 0x00,  // horizontal addressing
         0xA1, 0xC8,  // segment remap, COM scan direction
-        0xDA, 0x12,  // COM pins
+        0xDA, HEIGHT == 64 ? 0x12 : 0x02,  // COM pins: alternative for 64 rows
         0x81, 0xCF,  // contrast
         0xD9, 0xF1,  // precharge
         0xDB, 0x40,  // VCOM detect
