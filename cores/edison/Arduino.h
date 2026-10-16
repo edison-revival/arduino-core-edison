@@ -1,6 +1,6 @@
 /*
-  Arduino.h - Intel Edison (Kit for Arduino) core, edison-revival.
-  Copyright (c) 2026 The edison-revival contributors.
+  Arduino.h - Intel Edison (Kit for Arduino) core, open-edison.
+  Copyright (c) 2026 The open-edison contributors.
 
   This library is free software; you can redistribute it and/or modify it under the terms
   of the GNU Lesser General Public License as published by the Free Software Foundation;

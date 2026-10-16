@@ -1,8 +1,8 @@
 # arduino-core-edison
 
 An Arduino core for the Intel Edison on the Arduino expansion board, for boards running
-[edison-image](https://github.com/edison-revival/edison-image) (Debian 13). Part of
-[edison-revival](https://github.com/edison-revival).
+[edison-image](https://github.com/open-edison/edison-image) (Debian 13). Part of
+[open-edison](https://github.com/open-edison).
 
 **Status: early.** Works: `pinMode`/`digitalWrite`/`digitalRead` on the header pins,
 `Serial` (USB) and `Serial1` (IO0/IO1), `millis`/`micros`/delays, upload over USB or the
@@ -11,16 +11,16 @@ network. Not yet: `analogRead`, `analogWrite` (PWM), `Wire`, `SPI`, interrupts.
 ## Installing
 
 **Arduino IDE 2.x:** add this URL under File → Preferences → Additional boards manager URLs,
-then install "Intel Edison" by edison-revival in the Boards Manager:
+then install "Intel Edison" by open-edison in the Boards Manager:
 
 ```
-https://github.com/edison-revival/arduino-core-edison/releases/latest/download/package_edison-revival_index.json
+https://github.com/open-edison/arduino-core-edison/releases/latest/download/package_open-edison_index.json
 ```
 
-**PlatformIO:** use [platform-edison](https://github.com/edison-revival/platform-edison),
+**PlatformIO:** use [platform-edison](https://github.com/open-edison/platform-edison),
 which installs the same release archives.
 
-The board needs [edison-image](https://github.com/edison-revival/edison-image) v0.2.0 or
+The board needs [edison-image](https://github.com/open-edison/edison-image) v0.2.0 or
 later (it runs the sketch).
 
 ## How it works

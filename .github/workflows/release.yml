@@ -30,16 +30,16 @@ jobs:
             { echo "platform.txt's version doesn't match the tag $GITHUB_REF_NAME" >&2; exit 1; }
           cat > notes.md <<EOF
           Arduino core for the Intel Edison (Kit for Arduino) running
-          [edison-image](https://github.com/edison-revival/edison-image).
+          [edison-image](https://github.com/open-edison/edison-image).
 
           **Arduino IDE:** add this URL under File → Preferences → Additional boards manager
-          URLs, then install "Intel Edison" by edison-revival in the Boards Manager:
+          URLs, then install "Intel Edison" by open-edison in the Boards Manager:
 
           \`\`\`
-          https://github.com/edison-revival/arduino-core-edison/releases/latest/download/package_edison-revival_index.json
+          https://github.com/open-edison/arduino-core-edison/releases/latest/download/package_open-edison_index.json
           \`\`\`
 
-          **PlatformIO:** use [platform-edison](https://github.com/edison-revival/platform-edison),
+          **PlatformIO:** use [platform-edison](https://github.com/open-edison/platform-edison),
           which installs these same archives.
 
           \`SHA256SUMS\` lists the archives' checksums.

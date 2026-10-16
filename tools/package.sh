@@ -1,13 +1,13 @@
 #!/bin/sh
 # Package a release: the archives the Arduino Boards Manager and PlatformIO
-# (edison-revival/platform-edison) install, and the Boards Manager index. Needs only Docker.
+# (open-edison/platform-edison) install, and the Boards Manager index. Needs only Docker.
 #
 #   tools/package.sh VERSION [PREVIOUS_INDEX]
 #
 # Needs dist/edison-tools and dist/edison-sysroot (tools/build-tools.sh and
 # tools/make-sysroot.sh). Downloads Zig into downloads/ and checks it against the checksums
 # below; put local copies there if ziglang.org ever goes away. Writes dist/release/: the
-# archives and package_edison-revival_index.json, which adds VERSION to PREVIOUS_INDEX (the
+# archives and package_open-edison_index.json, which adds VERSION to PREVIOUS_INDEX (the
 # index from the last release) if given.
 #
 # Every archive has one top-level folder (the Boards Manager strips it) holding a
@@ -16,8 +16,8 @@ set -eu
 
 ZIG_VERSION=0.17.0
 DEBIAN_IMAGE=debian:trixie
-REPO_URL=https://github.com/edison-revival/arduino-core-edison
-PACKAGER=edison-revival
+REPO_URL=https://github.com/open-edison/arduino-core-edison
+PACKAGER=open-edison
 
 # Our name, Zig's name, the Boards Manager's host, PlatformIO's system type; then the Zig
 # archive's SHA256 (https://ziglang.org/download/index.json).
@@ -152,12 +152,13 @@ tools=$(jq -n --arg version "$version" --arg zig "$ZIG_VERSION" \
     {name: "edison-tools", version: $version, systems: $t}]')
 
 # Add this version to the previous index. A tool version already listed keeps its entry, so
-# its checksum doesn't change under anyone who has it installed.
+# its checksum doesn't change under anyone who has it installed. Only this packager's
+# entries carry over (v0.1.0 was published as edison-revival, before the org's rename).
 prev=${2:-/dev/null}
 [ -s "$prev" ] || { prev=$stage/empty.json; echo '{"packages": []}' >"$prev"; }
 jq --argjson platform "$platform" --argjson tools "$tools" --arg packager "$PACKAGER" \
     --arg site "$REPO_URL" '
-    (.packages[0] // {}) as $p
+    (first(.packages[] | select(.name == $packager)) // {}) as $p
     | ($p.tools // []) as $old
     | {packages: [{
         name: $packager, maintainer: $packager, websiteURL: $site, email: "",

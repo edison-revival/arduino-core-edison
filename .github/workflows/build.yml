@@ -52,13 +52,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download --pattern package_edison-revival_index.json --dir previous ||
+          gh release download --pattern package_open-edison_index.json --dir previous ||
             echo "No earlier release; starting a new index."
 
       - name: Package
         run: |
           version=$(sed -n 's/^version=//p' platform.txt)
-          prev=previous/package_edison-revival_index.json
+          prev=previous/package_open-edison_index.json
           [ -f "$prev" ] || prev=
           tools/package.sh "$version" $prev
 
@@ -119,8 +119,8 @@ jobs:
       - name: Install the core from the index
         run: |
           # The index points at the release; serve this build's archives instead.
-          sed "s|https://github.com/edison-revival/arduino-core-edison/releases/download/v[^/]*|http://127.0.0.1:8765|" \
-            release/package_edison-revival_index.json > release/package_local_index.json
+          sed "s|https://github.com/open-edison/arduino-core-edison/releases/download/v[^/]*|http://127.0.0.1:8765|" \
+            release/package_open-edison_index.json > release/package_local_index.json
           py=$(command -v python || command -v python3)
           "$py" -m http.server 8765 --bind 127.0.0.1 --directory release >/dev/null 2>&1 &
           sleep 2
@@ -132,7 +132,7 @@ jobs:
           export ARDUINO_DIRECTORIES_DATA=$PWD/arduino-data ARDUINO_DIRECTORIES_USER=$PWD/sketchbook \
             ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS=http://127.0.0.1:8765/package_local_index.json
           cli/arduino-cli core update-index
-          cli/arduino-cli core install edison-revival:edison
+          cli/arduino-cli core install open-edison:edison
 
       - name: Compile sketches
         run: |
@@ -140,7 +140,7 @@ jobs:
           $cli lib install elapsedMillis
           for sketch in core/tests/sketches/* sketchbook/libraries/elapsedMillis/examples/*; do
             echo "::group::$sketch"
-            $cli compile -b edison-revival:edison:edison --warnings all \
+            $cli compile -b open-edison:edison:edison --warnings all \
               --output-dir "out/$(basename "$sketch")" "$sketch"
             echo "::endgroup::"
           done

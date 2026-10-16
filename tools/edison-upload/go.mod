@@ -1,4 +1,4 @@
-module github.com/edison-revival/arduino-core-edison/tools/edison-upload
+module github.com/open-edison/arduino-core-edison/tools/edison-upload
 
 go 1.27
 

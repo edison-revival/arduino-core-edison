@@ -1,10 +1,10 @@
-# Intel Edison (Kit for Arduino) core, edison-revival.
+# Intel Edison (Kit for Arduino) core, open-edison.
 # Sketches are built with Zig's clang for x86_64 Linux (glibc 2.41, Debian 13) and run as a
 # Linux process on the board. Specification:
 # https://arduino.github.io/arduino-cli/latest/platform-specification/
 
 name=Intel Edison
-version=0.1.0
+version=0.1.1
 
 # Tools. To build against local copies, set these in platform.local.txt (see README).
 compiler.path={runtime.tools.edison-zig.path}/

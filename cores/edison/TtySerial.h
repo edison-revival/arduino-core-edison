@@ -1,7 +1,7 @@
 /*
   TtySerial.h - HardwareSerial on a Linux tty (/dev/ttyGS0 for Serial, /dev/ttyS1 for
   Serial1).
-  Copyright (c) 2026 The edison-revival contributors.
+  Copyright (c) 2026 The open-edison contributors.
 
   This library is free software; you can redistribute it and/or modify it under the terms
   of the GNU Lesser General Public License as published by the Free Software Foundation;

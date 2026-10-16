@@ -8,7 +8,7 @@ the tools).
 
 1. Build the sysroot and the tools (`edison-upload`, and `edison-cc`, a small wrapper the
    build uses): `tools/make-sysroot.sh` and `tools/build-tools.sh` (they write `dist/`).
-2. Put this repository (or a link to it) at `<sketchbook>/hardware/edison-revival/edison`.
+2. Put this repository (or a link to it) at `<sketchbook>/hardware/open-edison/edison`.
 3. Create `platform.local.txt` next to `platform.txt`, pointing at the tools (forward
    slashes, and a trailing slash on `compiler.path`; pick your computer's tools folder):
 
@@ -18,15 +18,15 @@ the tools).
    edison.tools.path=/path/to/arduino-core-edison/dist/edison-tools/linux-amd64
    ```
 
-4. `arduino-cli compile -b edison-revival:edison:edison tests/sketches/Blink`, then
-   `arduino-cli upload -b edison-revival:edison:edison -p PORT tests/sketches/Blink`.
+4. `arduino-cli compile -b open-edison:edison:edison tests/sketches/Blink`, then
+   `arduino-cli upload -b open-edison:edison:edison -p PORT tests/sketches/Blink`.
 
 **Release archives:** after step 1, `tools/package.sh VERSION [PREVIOUS_INDEX]` writes the
 Boards Manager and PlatformIO archives and the index to `dist/release/`, as CI does. It
 downloads Zig from ziglang.org and checks its checksums; put the archives in `downloads/`
 to build without that site. Every archive has one top-level folder (the Boards Manager
 strips it) holding a `package.json` (how PlatformIO finds the package and its host), so
-[platform-edison](https://github.com/edison-revival/platform-edison) installs the same
+[platform-edison](https://github.com/open-edison/platform-edison) installs the same
 files.
 
 ## Layout
@@ -66,7 +66,7 @@ pushing a change to the tools.
 4. Update `CORE_VERSION` in platform-edison so PlatformIO picks up the release.
 
 The Boards Manager URL always serves the latest release's index:
-`https://github.com/edison-revival/arduino-core-edison/releases/latest/download/package_edison-revival_index.json`.
+`https://github.com/open-edison/arduino-core-edison/releases/latest/download/package_open-edison_index.json`.
 
 ## Conventions
 
@@ -83,4 +83,4 @@ The Boards Manager URL always serves the latest release's index:
   their exact tag instead. Dependabot opens one grouped pull request a month with updates.
 - **Hardware changes need a hardware test.** Note what you tested on a real board in the
   pull request; findings go in
-  [edison-docs](https://github.com/edison-revival/edison-docs).
+  [edison-docs](https://github.com/open-edison/edison-docs).
