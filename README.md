@@ -21,7 +21,9 @@ https://github.com/open-edison/arduino-core-edison/releases/latest/download/pack
 which installs the same release archives.
 
 The board needs [edison-image](https://github.com/open-edison/edison-image) v0.2.0 or
-later (it runs the sketch).
+later (it runs the sketch). Its
+[hardware guide](https://github.com/open-edison/edison-image/blob/main/docs/hardware.md)
+covers the board's jumpers (IOREF, AREF, PWM pins), buttons and quirks.
 
 ## How it works
 
