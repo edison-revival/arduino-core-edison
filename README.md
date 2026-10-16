@@ -7,7 +7,7 @@ An Arduino core for the Intel Edison on the Arduino expansion board, for boards 
 **Status: early.** Works: `pinMode`/`digitalWrite`/`digitalRead` on the header pins,
 `Serial` (USB) and `Serial1` (IO0/IO1), `millis`/`micros`/delays, upload over USB or the
 network, `analogRead` on A0-A3, `analogWrite` (PWM) on ~3/~5/~6/~9, `attachInterrupt`,
-`Wire` (I2C) and `Servo`. Not yet: `SPI`, `tone`, `pulseIn`.
+`Wire` (I2C), `SPI` and `Servo`. Not yet: `tone`, `pulseIn`.
 
 ## Installing
 
@@ -58,6 +58,13 @@ as the `edison` user, and restarts it when a new one arrives.
   `noInterrupts()`/`interrupts()` hold them off, so wrap reads of what a handler changes
   in them, as on other boards. `RISING`, `FALLING` and `CHANGE` are exact (tested at 490
   edges/s); `LOW`/`HIGH` are checked every millisecond while the level lasts.
+- **SPI** is SPI5 on the header: SCK on 13, MISO on 12, MOSI on 11 (and the ICSP header).
+  `SPI.begin()` takes those pins from GPIO (the DS2 LED on 13 flickers with the clock); `SPI.end()`
+  or `pinMode()` gives them back. The device's chip select (10, or any pin) is driven by the
+  sketch or library with `digitalWrite()`, as usual. All four modes and MSB/LSB first; tested to
+  10 MHz. Transfers go in 7-byte pieces, because the SPI controller's DMA (used from 8 bytes)
+  hangs the board, so throughput is about 10 KB/s whatever the clock: fine for sensors and small
+  displays, slow for large transfers. Needs edison-image v0.2.6 or later.
 - **Servo** drives hobby servos on ~3, ~5, ~6 and ~9 (one each) from the hardware PWM at
   50 Hz. The hardware sets the pulse in 255ths of the period: steps of 78 us at 50 Hz,
   about 7.5 degrees over the default range. `servo.setRefreshInterval(10000)` (100 Hz)

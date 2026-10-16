@@ -24,6 +24,10 @@ int edison_gpio_edges(unsigned pin, int edges);
 // calling cb(rising, arg) for each with no locks held.
 void edison_gpio_events(unsigned pin, void (*cb)(bool rising, void *arg), void *arg);
 
+// Route IO11-IO13 to SPI5 (MOSI, MISO, SCK) for the SPI library, or (on = false) back to
+// inputs. Returns false (reported) if a pin can't be had.
+bool edison_spi_pins_enable(bool on);
+
 // In wiring_pwm.cpp: switch a PWM channel's SoC pin to its PWM function (edison-image's
 // edison-pinmux service), and stop a channel when its pin goes back to GPIO use.
 bool edison_pwm_pinmux(int channel);

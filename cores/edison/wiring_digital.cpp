@@ -122,7 +122,9 @@ void release_line(Line l) {
     held.erase(it);
 }
 
-enum class State { Unset, Input, Output, Analog, Pwm, Failed };
+enum class State { Unset, Input, Output, Analog, Pwm, Spi, Failed };
+
+bool spi_active = false;  // IO11-IO13 are routed to SPI5 (SPI library)
 State state[NUM_DIGITAL_PINS];
 
 // Report each pin's problem once: sketches call these functions in loops.
@@ -203,8 +205,9 @@ bool configure_analog(pin_size_t pin) {
     }
     // Isolate the ADC's SPI bus from the header (see edison_spi_isolate). Busy when SPI is
     // enabled on the header, which isolates it properly; nothing to do then.
+    // With SPI on the header, the ADC shares the bus with it properly: leave it be.
     static bool isolated = false;
-    if (!isolated) {
+    if (!isolated && !spi_active) {
         for (const EdisonMuxSetting &m : edison_spi_isolate) {
             set_line(named_line(m.line), Dir::Out, m.value);
         }
@@ -250,6 +253,44 @@ bool configure_pwm(pin_size_t pin) {
 std::mutex gpio_lock;
 
 }  // namespace
+
+bool edison_spi_pins_enable(bool on) {
+    std::lock_guard<std::mutex> lock(gpio_lock);
+    if (on == spi_active) return true;
+    if (!on) {
+        // Back to inputs: configure() also routes the muxes back to the GPIOs.
+        for (const EdisonSpiPin &s : edison_spi_pins) set_mode(pin_size_t(s.pin), INPUT);
+        spi_active = false;
+        return true;
+    }
+    for (const EdisonSpiPin &s : edison_spi_pins) {
+        pin_size_t pin = pin_size_t(s.pin);
+        const EdisonPinDesc &p = edison_pins[pin];
+        if (p.busy) {
+            report(pin, "in use by", p.busy);
+            return false;
+        }
+        if (state[pin] == State::Pwm) edison_pwm_stop(p.pwm);
+        // The SoC GPIO is cut off from the pin by the mux; let it go.
+        release_line(soc_line(p.soc));
+        set_pull(p, INPUT);
+        bool ok = set_line(named_line(p.dir), Dir::Out, s.output ? 1 : 0);
+        // The pin's other muxes as for its GPIO (e.g. IO11's PWM mux), then SPI5.
+        for (const EdisonMuxSetting &m : p.gpio_mux) {
+            if (ok && m.line && strcmp(m.line, s.sel) != 0) {
+                ok = set_line(named_line(m.line), Dir::Out, m.value);
+            }
+        }
+        ok = ok && set_line(named_line(s.sel), Dir::Out, 1);
+        if (!ok) {
+            report(pin, "can't claim its SPI lines", strerror(errno));
+            return false;
+        }
+        state[pin] = State::Spi;
+    }
+    spi_active = true;
+    return true;
+}
 
 int edison_gpio_edges(unsigned pin, int edges) {
     if (pin >= NUM_DIGITAL_PINS) return -1;
@@ -375,7 +416,8 @@ void edison_gpio_release_all() {
     for (pin_size_t pin = 0; pin < NUM_DIGITAL_PINS; pin++) {
         if (state[pin] == State::Pwm) edison_pwm_stop(edison_pins[pin].pwm);
         if (state[pin] == State::Output || state[pin] == State::Input ||
-            state[pin] == State::Analog || state[pin] == State::Pwm) {
+            state[pin] == State::Analog || state[pin] == State::Pwm ||
+            state[pin] == State::Spi) {
             configure(pin, INPUT);
         }
     }

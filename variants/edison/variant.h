@@ -31,6 +31,17 @@ struct EdisonPinDesc {
     int pwm = -1;                  // the SoC PWM channel (pwmchip0) for this pin, or -1
 };
 
+// SPI on the header (the SPI library): which pins carry SPI5, which way, and the mux line
+// that routes each to SPI5 (1) rather than its GPIO (0). SS (IO10) stays a GPIO, which
+// libraries drive themselves.
+struct EdisonSpiPin {
+    unsigned pin;
+    bool output;     // MOSI and SCK: driven by SPI5
+    const char *sel;
+};
+extern const EdisonSpiPin edison_spi_pins[3];
+extern const char *const edison_spi_device;  // the spidev on SPI5 for the header
+
 // Lines that route the header's SPI pins (IO10-IO13) to their GPIOs rather than SPI5.
 // Driven to 0 for analogRead() too: the kit's ADC is on SPI5, and with these left
 // floating its bus is connected to the header and it reads nothing.

@@ -43,6 +43,16 @@ const EdisonPinDesc edison_pins[] = {
 
 const size_t edison_num_pins = sizeof(edison_pins) / sizeof(edison_pins[0]);
 
+const EdisonSpiPin edison_spi_pins[3] = {
+    {11, true, "SPI_TXD_SEL"},   // MOSI
+    {12, false, "SPI_RXD_SEL"},  // MISO
+    {13, true, "SPI_CLK_SEL"},   // SCK (and the DS2 LED)
+};
+
+// SPI5 chip select 1, from edison-image's spidev overlay. The pin itself goes nowhere on
+// the header, but while it's selected it lets the header's MISO through to SPI5.
+const char *const edison_spi_device = "/dev/spidev5.1";
+
 const EdisonMuxSetting edison_spi_isolate[4] = {
     {"SPI_CLK_SEL", 0}, {"SPI_TXD_SEL", 0}, {"SPI_RXD_SEL", 0}, {"SPI_FS_SEL", 0}};
 
