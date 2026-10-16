@@ -18,7 +18,9 @@ bool check(uint32_t clock, uint8_t mode) {
 }
 
 void loop() {
-    const uint32_t clocks[] = {100000, 1000000, 4000000, 10000000, 25000000};
+    // Up to 10 MHz: 25 MHz (the controller's maximum) doesn't survive the header's level
+    // shifters and a jumper wire.
+    const uint32_t clocks[] = {100000, 1000000, 4000000, 10000000};
     int failures = 0;
     for (uint32_t clock : clocks) {
         Serial.print(clock / 1000);
