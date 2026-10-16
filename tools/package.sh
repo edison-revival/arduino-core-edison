@@ -151,15 +151,17 @@ tools=$(jq -n --arg version "$version" --arg zig "$ZIG_VERSION" \
     {name: "edison-sysroot", version: $version, systems: $s},
     {name: "edison-tools", version: $version, systems: $t}]')
 
-# Add this version to the previous index. A tool version already listed keeps its entry, so
-# its checksum doesn't change under anyone who has it installed. Only this packager's
-# entries carry over (v0.1.0 was published as edison-revival, before the org's rename).
+# Add this version to the previous index. A tool version that an earlier release already
+# listed (Zig, versioned on its own) keeps its entry, so its checksum doesn't change under
+# anyone who has it installed. Tools versioned with the core are this build's: they replace
+# entries for the same version (when main rebuilds the version just released). Only this
+# packager's entries carry over (v0.1.0 was published as edison-revival, before the rename).
 prev=${2:-/dev/null}
 [ -s "$prev" ] || { prev=$stage/empty.json; echo '{"packages": []}' >"$prev"; }
 jq --argjson platform "$platform" --argjson tools "$tools" --arg packager "$PACKAGER" \
     --arg site "$REPO_URL" '
     (first(.packages[] | select(.name == $packager)) // {}) as $p
-    | ($p.tools // []) as $old
+    | [($p.tools // [])[] | select(.version != $platform.version)] as $old
     | {packages: [{
         name: $packager, maintainer: $packager, websiteURL: $site, email: "",
         help: {online: $site},
